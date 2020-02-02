@@ -37,10 +37,12 @@ public struct IfcFile : IBinarySerialize, INullable
         Regex reg = new Regex(pattern);
         string[] sarr = Regex.Split(reg.Match(ifcstring).Groups["data"].Value, ";\r\n");
         List<IfcObj> rList = new List<IfcObj>();
+        //IfcObj obj;
         foreach (string str in sarr)
         {
             if (!string.IsNullOrEmpty(str) & (str != "\r\n"))
             {
+                //obj = IfcObj._Parse(str);
                 rList.Add(IfcObj._parse(str));
             }
         }
@@ -120,6 +122,12 @@ public struct IfcFile : IBinarySerialize, INullable
         return IfcObj.Null;
     }
 
+    //[SqlMethod(Name = "GetHeadItems", TableDefinition = "obj IfcObj")]
+    //public IEnumerable GetHeadItems()
+    //{      
+    //    return this.Head.ToArray<IfcObj>();
+    //}
+
     [SqlMethod(OnNullCall = false)]
     public IfcFile SetHeadItem(int index, IfcObj nval)
     {
@@ -150,6 +158,7 @@ public struct IfcFile : IBinarySerialize, INullable
     [SqlMethod(OnNullCall = false)]
     public IfcFile AddDataItem(IfcObj nval)
     {
+        //this.Data.Add(nval);
         this._addDataItem(nval);
         return this;
     }
@@ -172,7 +181,7 @@ public struct IfcFile : IBinarySerialize, INullable
     public IfcFile DelDataItem(int index)
     {
         if ((index >= 0) & (index < this.Data.Count)) this.Data.Remove(this.Data[index]);
-            return this;
+        return this;
     }
 
     [SqlMethod(OnNullCall = false)]
@@ -183,17 +192,25 @@ public struct IfcFile : IBinarySerialize, INullable
     }
 
     [SqlMethod(OnNullCall = false)]
+    public IfcObj GetDataItemByID(int tid)
+    {
+        if (this.DataDict.ContainsKey(tid)) return this.DataDict[tid];
+        else return IfcObj.Null;
+        //return this.DataDict[tid];
+    }
+
+    [SqlMethod(OnNullCall = false)]
     public IfcFile SetDataItem(int index, IfcObj nval)
     {
         if ((index >= 0) & (index < this.Data.Count)) this.Data[index] = nval;
         return this;
     }
 
-    public List<IfcObj> GetLinks(int sid)
+    public List<IfcObj> _getLinks(int sid)
     {
         List<IfcObj> rList = new List<IfcObj>();
         List<IfcValue> refs;
-        IfcObj sobj = this.GetDataItem(sid);
+        IfcObj sobj = this.GetDataItemByID(sid);
         if (!sobj.IsNull)
         {
             rList.Add(sobj);
@@ -201,26 +218,67 @@ public struct IfcFile : IBinarySerialize, INullable
             foreach (IfcValue ro in refs)
             {
                 int nid = (int)ro.value;
-                rList.AddRange(this.GetLinks(nid));
+                rList.AddRange(this._getLinks(nid));
             }
         }
         return rList;
+    }
+
+    public List<IfcObj> _getLinks2(int sid)
+    {
+        List<IfcObj> rList = new List<IfcObj>();
+        //List<IfcValue> refs, nrefs = new List<IfcValue>();
+        IfcObj sobj = this.GetDataItemByID(sid);
+        rList.Add(sobj);
+        //if (!sobj.IsNull)
+        //{
+        //    rList.Add(sobj);
+        //    refs = sobj._getRefs();
+
+        //    do
+        //    {
+        //        nrefs.Clear();
+        //        foreach (IfcValue ro in refs)
+        //        {
+
+        //            int nid = (int)ro.value;
+        //            sobj = this.GetDataItemByID(sid);
+        //            if (!sobj.IsNull)
+        //            {
+        //                rList.Add(sobj);
+        //                nrefs.AddRange(sobj._getRefs());
+        //            }
+
+        //            //rList.AddRange(this._getLinks(nid));
+        //        }
+        //        refs = nrefs;
+        //    } while (refs.Count > 0);
+        //}
+        return rList;
+    }
+
+    [SqlMethod()]
+    public IfcValue GetLinks(int sid)
+    {
+        return IfcValue.GetList(this._getLinks(sid));
     }
 
     public override string ToString()
     {
         return $"ISO-10303-21;\nHEADER;\n{string.Join("\n", this.Head)}\nENDSEC;\nDATA;\n{string.Join("\n", this.Data)}\nENDSEC;\nEND-ISO-10303-21;";
     }
-    
+
     public void Read(BinaryReader r)
     {
+        //throw new NotImplementedException();
+
         this.Head = new List<IfcObj>();
         this.Data = new List<IfcObj>();
         this.DataDict = new Dictionary<int, IfcObj>();
 
         IfcObj nobj;
 
-        int wcount = (int)r.ReadUInt32(); 
+        int wcount = (int)r.ReadUInt32();
         for (int i = 0; i < wcount; i++)
         {
             nobj = new IfcObj();
@@ -229,7 +287,7 @@ public struct IfcFile : IBinarySerialize, INullable
         }
         //
         wcount = (int)r.ReadUInt32();
-        if (wcount>0)
+        if (wcount > 0)
         {
             for (int i = 0; i < wcount; i++)
             {
@@ -238,14 +296,20 @@ public struct IfcFile : IBinarySerialize, INullable
                 this.Data.Add(nobj);
             }
         }
+        
+        foreach (IfcObj obj in this.Data)
+        {
+            this.DataDict.Add(obj.id, obj);
+        }
 
     }
-    
+
     public void Write(BinaryWriter w)
     {
+        //throw new NotImplementedException();
         uint ui = (uint)this.Head.Count;
         w.Write(ui);
-        for (int i=0; i< this.Head.Count; i++)
+        for (int i = 0; i < this.Head.Count; i++)
         {
             this.Head[i].Write(w);
         }

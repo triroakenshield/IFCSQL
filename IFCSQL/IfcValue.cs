@@ -22,6 +22,8 @@ public enum IfcValueType
     LIST = 8,
     OBJ = 9,
     BINARY = 10
+    //BOOL = 11,
+    //LOGICAL = 12
 }
 
 [Serializable]
@@ -59,7 +61,7 @@ public struct IfcValue : IBinarySerialize, INullable
                 @"(?<ent>^#\d+$)",
                 @"(?<enum>^\..+\.$)",
                 @"(?<list>^\((.+,)*.*\)$)",
-                @"(?<obj>^\w+\(.+\)$)"
+                @"(?<obj>^(#\d+\s?=\s?)?\w+\(.+\);?$)"
             };
         string pattern = String.Join("|", patterns);
         Regex reg = new Regex(pattern);
@@ -86,6 +88,13 @@ public struct IfcValue : IBinarySerialize, INullable
         return IfcValueType.STRING;
     }
 
+
+    //public IfcValue()
+    //{
+    //    this.type = IfcValueType.NULL;
+    //    this.value = null;
+    //}
+
     public IfcValue(IfcValueType ntype, object nvalue)
     {
         this.type = ntype;
@@ -97,28 +106,38 @@ public struct IfcValue : IBinarySerialize, INullable
         List<IfcValue> rList = new List<IfcValue>();
         if (pstr.Length == 0) return rList;
         string ntoken = string.Empty;
-        int level = 0;
-        bool slist = false;
+        int level1 = 0, level2 = 0;
+        bool slist = false, sobj = false;
         for (int i = 0; i < pstr.Length; i++)
         {
             char ch = pstr[i];
-            switch (ch)
+            if (level1 == 0 & level2 == 0 & (ch == '#' | char.IsLetter(ch))) sobj = true;
+            switch (ch) //obj!!!
             {
                 case '(':
-                    level++;
+                    level1++;
                     slist = true;
+                    if (sobj) ntoken += ch;
                     break;
                 case ')':
-                    level--;
+                    level1--;
+                    if (sobj) ntoken += ch;
                     break;
                 case '\'':
-                    if (level == 0) level++;
-                    else level--;
+                    if (level2 == 0) level2++;
+                    else level2--;
+                    if (sobj) ntoken += ch;
                     break;
                 case ',':
-                    if (level == 0)
+                    if (level1 == 0 & level2 == 0)
                     {
-                        if (slist)
+                        if (sobj)
+                        {
+                            rList.Add(new IfcValue(ntoken));
+                            sobj = false;
+                            slist = false;
+                        }
+                        else if (slist)
                         {
                             rList.Add(new IfcValue(IfcValueType.LIST, IfcValue.ParseAttributeList(ntoken)));
                             slist = false;
@@ -133,8 +152,17 @@ public struct IfcValue : IBinarySerialize, INullable
                     break;
             }
         }
-        if (slist) rList.Add(new IfcValue(IfcValueType.LIST, IfcValue.ParseAttributeList(ntoken)));
-        else rList.Add(new IfcValue(ntoken));
+        if (sobj)
+        {
+            rList.Add(new IfcValue(ntoken));
+            slist = false;
+        }
+        else
+        {
+            if (slist) rList.Add(new IfcValue(IfcValueType.LIST, IfcValue.ParseAttributeList(ntoken)));
+            else rList.Add(new IfcValue(ntoken));
+        }
+
         return rList;
     }
 
@@ -146,8 +174,10 @@ public struct IfcValue : IBinarySerialize, INullable
         switch (this.type)
         {
             case IfcValueType.NULL:
+                //this.value = null;
                 break;
             case IfcValueType.DERIVE:
+                //this.value = null;
                 break;
             case IfcValueType.STRING:
                 this.value = nvalue;
@@ -158,10 +188,10 @@ public struct IfcValue : IBinarySerialize, INullable
             case IfcValueType.INTEGER:
                 this.value = int.Parse(nvalue);
                 break;
-            case IfcValueType.ENTITY_INSTANCE_NAME:
+            case IfcValueType.ENTITY_INSTANCE_NAME: //!!!
                 this.value = int.Parse(nvalue.Substring(1));
                 break;
-            case IfcValueType.ENUMERATION:
+            case IfcValueType.ENUMERATION: //!!!
                 this.value = nvalue.Substring(1, nvalue.Length - 2);
                 break;
             case IfcValueType.LIST:
@@ -255,12 +285,24 @@ public struct IfcValue : IBinarySerialize, INullable
         return this.type.ToString();
     }
 
+    public static IfcValue GetList(List<IfcObj> wList)
+    {
+        List<IfcValue> vList = new List<IfcValue>();
+
+        foreach (IfcObj o in wList)
+        {
+            vList.Add(new IfcValue(IfcValueType.OBJ, o));
+        }
+
+        return new IfcValue(IfcValueType.LIST, vList); 
+    }
+
     public static List<IfcValue> GetRefs(IfcValue val)
     {
         List<IfcValue> rList = new List<IfcValue>();
         switch (val.type)
         {
-            case IfcValueType.ENTITY_INSTANCE_NAME:
+            case IfcValueType.ENTITY_INSTANCE_NAME: //!!!
                 rList.Add(val);
                 break;
             case IfcValueType.LIST:
@@ -345,12 +387,12 @@ public struct IfcValue : IBinarySerialize, INullable
             case IfcValueType.STRING:
                 return $"'{IfcValue.toUTF((string)this.value)}'";
             case IfcValueType.REAL:
-                return $"{((double)value).ToString()}";
+                return $"{((double)value).ToString("#.0###")}";
             case IfcValueType.INTEGER:
                 return $"{((int)value).ToString()}";
-            case IfcValueType.ENTITY_INSTANCE_NAME: 
+            case IfcValueType.ENTITY_INSTANCE_NAME: //!!!
                 return $"#{((int)value).ToString()}";
-            case IfcValueType.ENUMERATION: 
+            case IfcValueType.ENUMERATION: //!!!
                 return $".{((string)value).ToUpper()}.";
             case IfcValueType.LIST:
                 return $"({string.Join(",", ((List<IfcValue>)value).ConvertAll(x => x.ToString()))})";
@@ -362,6 +404,7 @@ public struct IfcValue : IBinarySerialize, INullable
 
     public void Read(BinaryReader r)
     {
+        //throw new NotImplementedException();
         byte bt = r.ReadByte();
         this.type = (IfcValueType)bt;
         //
@@ -380,13 +423,13 @@ public struct IfcValue : IBinarySerialize, INullable
             case IfcValueType.INTEGER:
                 this.value = r.ReadInt32();
                 break;
-            case IfcValueType.ENTITY_INSTANCE_NAME: 
+            case IfcValueType.ENTITY_INSTANCE_NAME: //!!!
                 this.value = r.ReadInt32();
                 break;
-            case IfcValueType.ENUMERATION: 
+            case IfcValueType.ENUMERATION: //!!!
                 this.value = r.ReadString();
                 break;
-            case IfcValueType.LIST: 
+            case IfcValueType.LIST: //!!!
                 List<IfcValue> wList = new List<IfcValue>();
                 IfcValue nval;
                 int lcount = (int)r.ReadUInt32();
@@ -415,7 +458,9 @@ public struct IfcValue : IBinarySerialize, INullable
 
     public void Write(BinaryWriter w)
     {
+        //throw new NotImplementedException();
         w.Write((byte)type);
+        //
         switch (this.type)
         {
             case IfcValueType.NULL:
@@ -431,13 +476,13 @@ public struct IfcValue : IBinarySerialize, INullable
             case IfcValueType.INTEGER:
                 w.Write((int)this.value);
                 break;
-            case IfcValueType.ENTITY_INSTANCE_NAME:
+            case IfcValueType.ENTITY_INSTANCE_NAME: //!!!
                 w.Write((int)this.value);
                 break;
-            case IfcValueType.ENUMERATION: 
+            case IfcValueType.ENUMERATION: //!!!
                 w.Write(((string)value).ToUpper());
                 break;
-            case IfcValueType.LIST: 
+            case IfcValueType.LIST: //!!!
                 List<IfcValue> wList = this.value as List<IfcValue>;
                 if (wList != null)
                 {
@@ -459,5 +504,6 @@ public struct IfcValue : IBinarySerialize, INullable
                 break;
         }
     }
-    
+
+
 }
