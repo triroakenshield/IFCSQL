@@ -183,7 +183,7 @@ public struct IfcValue : IBinarySerialize, INullable
                 this.value = nvalue;
                 break;
             case IfcValueType.REAL:
-                this.value = double.Parse(nvalue);
+                this.value = double.Parse(nvalue, CultureInfo.InvariantCulture);
                 break;
             case IfcValueType.INTEGER:
                 this.value = int.Parse(nvalue);

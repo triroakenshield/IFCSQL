@@ -1,5 +1,10 @@
 ﻿using System;
+//
+using System.Data.SqlClient;
+using Microsoft.SqlServer.Server;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
+//
+//using IFCSQL;
 
 namespace UnitTestProject1
 {
@@ -55,6 +60,42 @@ namespace UnitTestProject1
             res = IfcValue.GetType(tstr);
             var tobj = IfcObj._parse(tstr);
             Assert.IsTrue(res == IfcValueType.OBJ, "bad_obj1");
+        }
+
+        [TestMethod]
+        public void TestSQLReader1()
+        {
+            using (SqlConnection connection = new SqlConnection(@"Server=DESKTOP-BICNNEF\SQLEXPRESS;Database=test2;Trusted_Connection=True;"))
+            {
+                connection.Open();
+                SqlCommand command1 = new SqlCommand("select IfcObj::Parse('IFCDIRECTION((0.,1.));');");
+                command1.Connection = connection;
+                var res = command1.ExecuteScalar();
+            }
+        }
+
+        [TestMethod]
+        public void TestSQLReader2()
+        {
+            using (SqlConnection connection = new SqlConnection(@"Server=DESKTOP-BICNNEF\SQLEXPRESS;Database=test2;Trusted_Connection=True;"))
+            {
+                connection.Open();
+                SqlCommand command1 = new SqlCommand("SELECT [item] FROM [test2].[dbo].[Data1]");
+                command1.Connection = connection;
+
+                SqlDataReader reader = command1.ExecuteReader();
+                IfcObj var;
+
+                if (reader.HasRows)
+                {
+                    while (reader.Read())
+                    {
+                        var = reader.GetFieldValue<IfcObj>(0);
+                    }
+                }
+
+                reader.Close();
+            }
         }
     }
 }

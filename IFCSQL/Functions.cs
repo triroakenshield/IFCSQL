@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 //
 using System.Data.SqlTypes;
+using System.Data.SqlClient;
 using Microsoft.SqlServer.Server;
 
 public class Functions
@@ -67,6 +68,58 @@ public class Functions
     public static String NewGlobalId()
     {
         return GlobalId.Format(Guid.NewGuid());
+    }
+
+    private static void _calcRefs(Dictionary<int, List<int>> wDict, int wobj_id, List<IfcValue> refs)
+    {
+        int ref_val;
+        foreach (IfcValue r in refs)
+        {
+            if (r.type == IfcValueType.ENTITY_INSTANCE_NAME)
+            {
+                ref_val = (int)r.value;
+                if (!wDict.ContainsKey(ref_val)) wDict.Add(ref_val, new List<int>());
+                wDict[ref_val].Add(wobj_id);
+            }
+        }
+    }
+
+    public static IEnumerable CalcRefCount(string tablename, string fieldname)
+    {
+        using (SqlConnection connection = new SqlConnection("context connection=true"))
+        {
+            string QueryStr = $"select {fieldname} from {tablename}";
+            IfcObj var;
+            List<IfcObj> wList = new List<IfcObj>();
+            Dictionary<int, List<int>> wDict = new Dictionary<int, List<int>>();
+
+            connection.Open();
+
+            SqlCommand command1 = new SqlCommand(QueryStr);
+            SqlDataReader reader = command1.ExecuteReader();
+
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    var = reader.GetFieldValue<IfcObj>(0);
+                    wList.Add(var);
+                    if (!wDict.ContainsKey(var.id)) wDict.Add(var.id, new List<int>());
+                    _calcRefs(wDict, var.id, var._getRefs());
+                }
+            }
+
+            reader.Close();
+
+            List<Object> rList = new List<object>();
+
+            foreach (IfcObj o in wList)
+            {
+                rList.Add(new { obj = o, refs = wDict[o.id] });
+            }
+
+            return rList;
+        }
     }
 
 }

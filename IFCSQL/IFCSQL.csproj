@@ -54,4 +54,7 @@
     <Content Include="install.sql" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <PropertyGroup>
+    <PostBuildEvent>copy "$(TargetPath)" "$(SolutionDir)\packages\MSTest.TestAdapter.1.3.2\build\_common"</PostBuildEvent>
+  </PropertyGroup>
 </Project>
