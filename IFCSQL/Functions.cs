@@ -84,6 +84,23 @@ public class Functions
         }
     }
 
+    private static void FillRefsValues1(object obj, out int oid, out IfcValue refsval)
+    {
+        //TheValue = (IfcValue)obj;
+        KeyValuePair<int, List<int>> var = (KeyValuePair<int, List<int>>)obj;
+        List<IfcValue> refs = new List<IfcValue>();
+
+        foreach (int rid in var.Value)
+        {
+            refs.Add(new IfcValue(IfcValueType.ENTITY_INSTANCE_NAME, rid));
+        }
+
+        oid = var.Key;
+        refsval = new IfcValue(IfcValueType.LIST, refs);
+
+    }
+
+    [SqlFunction(DataAccess = DataAccessKind.Read, FillRowMethodName = "FillRefsValues1", TableDefinition = "oid int; refs IfcValue")]
     public static IEnumerable CalcRefCount(string tablename, string fieldname)
     {
         using (SqlConnection connection = new SqlConnection("context connection=true"))
@@ -96,6 +113,7 @@ public class Functions
             connection.Open();
 
             SqlCommand command1 = new SqlCommand(QueryStr);
+            command1.Connection = connection;
             SqlDataReader reader = command1.ExecuteReader();
 
             if (reader.HasRows)
@@ -111,14 +129,14 @@ public class Functions
 
             reader.Close();
 
-            List<Object> rList = new List<object>();
+/*            List<Object> rList = new List<object>();
 
             foreach (IfcObj o in wList)
             {
                 rList.Add(new { obj = o, refs = wDict[o.id] });
-            }
+            }*/
 
-            return rList;
+            return wDict;
         }
     }
 

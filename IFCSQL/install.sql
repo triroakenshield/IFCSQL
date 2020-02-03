@@ -18,6 +18,9 @@ go
 DROP FUNCTION IF EXISTS ObjListToTable
 go
 
+DROP FUNCTION IF EXISTS CalcRefCount
+go
+
 DROP AGGREGATE IF EXISTS ValuesToList
 go
 
@@ -79,6 +82,13 @@ RETURNS  TABLE ([obj] IfcObj)
 WITH EXECUTE AS CALLER
 AS
 EXTERNAL NAME [IFCSQL].[Functions].[ObjListToTable]
+GO
+
+CREATE FUNCTION [dbo].[CalcRefCount](@tablename nvarchar(max), @fieldname nvarchar(max))
+RETURNS  TABLE (oid int, refs IfcValue) 
+WITH EXECUTE AS CALLER
+AS
+EXTERNAL NAME [IFCSQL].[Functions].[CalcRefCount]
 GO
 
 CREATE FUNCTION [dbo].[NewGlobalId]()
