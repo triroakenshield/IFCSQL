@@ -4,109 +4,93 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlClient;
+using System.Linq;
+
+// ReSharper disable CheckNamespace
+// ReSharper disable UnusedMember.Local
 
 public class Functions
 {
-    private static void FillValues(object obj, out IfcObj TheValue)
+    private static void FillValues(object obj, out IfcObj theValue)
     {
-        TheValue = (IfcObj)obj;
+        theValue = (IfcObj)obj;
     }
 
-    private static void FillValues2(object obj, out IfcObj TheValue)
+    private static void FillValues2(object obj, out IfcObj theValue)
     {
-        IfcValue val = (IfcValue)obj;
-        if (val.Type == IfcValueType.OBJ) TheValue = (IfcObj)val.Value;
-        else TheValue = IfcObj.Null;
+        var val = (IfcValue)obj;
+        theValue = val.Type == IfcValueType.OBJ ? (IfcObj) val.Value : IfcObj.Null;
     }
 
-    private static void FillValues3(object obj, out IfcValue TheValue)
+    private static void FillValues3(object obj, out IfcValue theValue)
     {
-        TheValue = (IfcValue)obj;
-    }
-
-    [SqlFunction(FillRowMethodName = "FillValues", TableDefinition = "obj IfcObj")]
-    public static IEnumerable GetHeadItems(IfcFile wfile)
-    {
-        return wfile.Head;
+        theValue = (IfcValue)obj;
     }
 
     [SqlFunction(FillRowMethodName = "FillValues", TableDefinition = "obj IfcObj")]
-    public static IEnumerable GetDataItems(IfcFile wfile)
+    public static IEnumerable GetHeadItems(IfcFile wFile)
     {
-        return wfile.Data;
+        return wFile.Head;
+    }
+
+    [SqlFunction(FillRowMethodName = "FillValues", TableDefinition = "obj IfcObj")]
+    public static IEnumerable GetDataItems(IfcFile wFile)
+    {
+        return wFile.Data;
     }
 
     [SqlFunction(FillRowMethodName = "FillValues3", TableDefinition = "obj IfcValue")]
-    public static IEnumerable ValuesListToTable(IfcValue wlist)
+    public static IEnumerable ValuesListToTable(IfcValue wList)
     {
-        if (wlist.Type == IfcValueType.LIST) return (List<IfcValue>)wlist.Value;
-        else {
-            List<IfcValue> rList = new List<IfcValue>();
-            rList.Add(wlist);
-            return rList;
-        }
+        return wList.Type == IfcValueType.LIST ? (List<IfcValue>) wList.Value : new List<IfcValue> {wList};
     }
 
     [SqlFunction(FillRowMethodName = "FillValues2", TableDefinition = "obj IfcObj")]
-    public static IEnumerable ObjListToTable(IfcValue wlist)
+    public static IEnumerable ObjListToTable(IfcValue wList)
     {
-        if (wlist.Type == IfcValueType.LIST) return (List<IfcValue>)wlist.Value;
-        else
-        {
-            var rList = new List<IfcValue>();
-            rList.Add(wlist);
-            return rList;
-        }
+        if (wList.Type == IfcValueType.LIST) return (List<IfcValue>)wList.Value;
+        else return new List<IfcValue> { wList };
     }
 
-    [SqlFunction()]
+    [SqlFunction]
     public static string NewGlobalId()
     {
         return GlobalId.Format(Guid.NewGuid());
     }
 
-    private static void _calcRefs(Dictionary<int, List<int>> wDict, int wobj_id, List<IfcValue> refs)
+    private static void _calcRefs(IDictionary<int, List<int>> wDict, int wobjId, IEnumerable<IfcValue> refs)
     {
-        int ref_val;
-        foreach (IfcValue r in refs)
+        foreach (var r in refs)
         {
-            if (r.Type == IfcValueType.ENTITY_INSTANCE_NAME)
-            {
-                ref_val = (int)r.Value;
-                if (!wDict.ContainsKey(ref_val)) wDict.Add(ref_val, new List<int>());
-                wDict[ref_val].Add(wobj_id);
-            }
+            if (r.Type != IfcValueType.ENTITY_INSTANCE_NAME) continue;
+            var refVal = (int)r.Value;
+            if (!wDict.ContainsKey(refVal)) wDict.Add(refVal, new List<int>());
+            wDict[refVal].Add(wobjId);
         }
     }
 
-    private static void FillRefsValues1(object obj, out int oid, out IfcValue refsval)
+    private static void FillRefsValues1(object obj, out int oid, out IfcValue refsVal)
     {
-        //TheValue = (IfcValue)obj;
         var var = (KeyValuePair<int, List<int>>)obj;
-        var refs = new List<IfcValue>();
-
-        foreach (var rid in var.Value)
-        {
-            refs.Add(new IfcValue(IfcValueType.ENTITY_INSTANCE_NAME, rid));
-        }
+        var refs = var.Value.Select(rid => new IfcValue(IfcValueType.ENTITY_INSTANCE_NAME, rid)).ToList();
 
         oid = var.Key;
-        refsval = new IfcValue(IfcValueType.LIST, refs);
+        refsVal = new IfcValue(IfcValueType.LIST, refs);
     }
 
     [SqlFunction(DataAccess = DataAccessKind.Read, FillRowMethodName = "FillRefsValues1", TableDefinition = "oid int; refs IfcValue")]
-    public static IEnumerable CalcRefCount(string tablename, string fieldname)
+    public static IEnumerable CalcRefCount(string tableName, string fieldName)
     {
-        using (SqlConnection connection = new SqlConnection("context connection=true"))
+        using (var connection = new SqlConnection("context connection=true"))
         {
-            var QueryStr = $"select {fieldname} from {tablename}";
+            var queryStr = $"select {fieldName} from {tableName}";
             IfcObj var;
             var wList = new List<IfcObj>();
             var wDict = new Dictionary<int, List<int>>();
 
             connection.Open();
 
-            var command1 = new SqlCommand(QueryStr) {Connection = connection};
+            var command1 = new SqlCommand(queryStr) {Connection = connection};
             var reader = command1.ExecuteReader();
 
             if (reader.HasRows)
@@ -121,14 +105,6 @@ public class Functions
             }
 
             reader.Close();
-
-/*            List<Object> rList = new List<object>();
-
-            foreach (IfcObj o in wList)
-            {
-                rList.Add(new { obj = o, refs = wDict[o.id] });
-            }*/
-
             return wDict;
         }
     }

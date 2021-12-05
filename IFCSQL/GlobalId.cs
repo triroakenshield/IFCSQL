@@ -1,5 +1,10 @@
 ﻿using System;
 using System.Text;
+// ReSharper disable StringLiteralTypo
+// ReSharper disable CheckNamespace
+// ReSharper disable InconsistentNaming
+// ReSharper disable UnusedMember.Local
+// ReSharper disable UnusedType.Local
 
 //https://github.com/buildingSMART/IfcDoc/blob/master/IfcKit/utilities/BuildingSmart.Utilities.Conversion/GlobalIdConverter.cs
 
@@ -31,20 +36,20 @@ public static class GlobalId
             num[i] = cv_from_64(temp);
         }
 
-        var Data1 = (uint)(num[0] * 16777216 + num[1]);                 // 16-13. bytes
-        var Data2 = (ushort)(num[2] / 256);                              // 12-11. bytes
-        var Data3 = (ushort)((num[2] % 256) * 256 + num[3] / 65536);     // 10-09. bytes
+        var data1 = num[0] * 16777216 + num[1];                 // 16-13. bytes
+        var data2 = (ushort)(num[2] / 256);                              // 12-11. bytes
+        var data3 = (ushort)((num[2] % 256) * 256 + num[3] / 65536);     // 10-09. bytes
 
-        var Data4_0 = (byte)((num[3] / 256) % 256);                   //    08. byte
-        var Data4_1 = (byte)(num[3] % 256);                           //    07. byte
-        var Data4_2 = (byte)(num[4] / 65536);                         //    06. byte
-        var Data4_3 = (byte)((num[4] / 256) % 256);                   //    05. byte
-        var Data4_4 = (byte)(num[4] % 256);                           //    04. byte
-        var Data4_5 = (byte)(num[5] / 65536);                         //    03. byte
-        var Data4_6 = (byte)((num[5] / 256) % 256);                   //    02. byte
-        var Data4_7 = (byte)(num[5] % 256);                           //    01. byte
+        var data40 = (byte)((num[3] / 256) % 256);                   //    08. byte
+        var data41 = (byte)(num[3] % 256);                           //    07. byte
+        var data42 = (byte)(num[4] / 65536);                         //    06. byte
+        var data43 = (byte)((num[4] / 256) % 256);                   //    05. byte
+        var data44 = (byte)(num[4] % 256);                           //    04. byte
+        var data45 = (byte)(num[5] / 65536);                         //    03. byte
+        var data46 = (byte)((num[5] / 256) % 256);                   //    02. byte
+        var data47 = (byte)(num[5] % 256);                           //    01. byte
 
-        return new Guid(Data1, Data2, Data3, Data4_0, Data4_1, Data4_2, Data4_3, Data4_4, Data4_5, Data4_6, Data4_7);
+        return new Guid(data1, data2, data3, data40, data41, data42, data43, data44, data45, data46, data47);
     }
 
     public static string Format(Guid pGuid)
@@ -53,27 +58,27 @@ public static class GlobalId
         int i, n;
 
         var comp = pGuid.ToByteArray();
-        var Data1 = BitConverter.ToUInt32(comp, 0);
-        var Data2 = BitConverter.ToUInt16(comp, 4);
-        var Data3 = BitConverter.ToUInt16(comp, 6);
-        var Data4_0 = comp[8];
-        var Data4_1 = comp[9];
-        var Data4_2 = comp[10];
-        var Data4_3 = comp[11];
-        var Data4_4 = comp[12];
-        var Data4_5 = comp[13];
-        var Data4_6 = comp[14];
-        var Data4_7 = comp[15];
+        var data1 = BitConverter.ToUInt32(comp, 0);
+        var data2 = BitConverter.ToUInt16(comp, 4);
+        var data3 = BitConverter.ToUInt16(comp, 6);
+        var data40 = comp[8];
+        var data41 = comp[9];
+        var data42 = comp[10];
+        var data43 = comp[11];
+        var data44 = comp[12];
+        var data45 = comp[13];
+        var data46 = comp[14];
+        var data47 = comp[15];
 
         //
         // Creation of six 32 Bit integers from the components of the GUID structure
         //
-        num[0] = (uint)(Data1 / 16777216);                                                 //    16. byte  (pGuid->Data1 / 16777216) is the same as (pGuid->Data1 >> 24)
-        num[1] = (uint)(Data1 % 16777216);                                                 // 15-13. bytes (pGuid->Data1 % 16777216) is the same as (pGuid->Data1 & 0xFFFFFF)
-        num[2] = (uint)(Data2 * 256 + Data3 / 256);                                 // 12-10. bytes
-        num[3] = (uint)((Data3 % 256) * 65536 + Data4_0 * 256 + Data4_1);  // 09-07. bytes
-        num[4] = (uint)(Data4_2 * 65536 + Data4_3 * 256 + Data4_4);       // 06-04. bytes
-        num[5] = (uint)(Data4_5 * 65536 + Data4_6 * 256 + Data4_7);       // 03-01. bytes
+        num[0] = data1 / 16777216;                                      //    16. byte  (pGuid->Data1 / 16777216) is the same as (pGuid->Data1 >> 24)
+        num[1] = data1 % 16777216;                                      // 15-13. bytes (pGuid->Data1 % 16777216) is the same as (pGuid->Data1 & 0xFFFFFF)
+        num[2] = (uint)(data2 * 256 + data3 / 256);                     // 12-10. bytes
+        num[3] = (uint)((data3 % 256) * 65536 + data40 * 256 + data41); // 09-07. bytes
+        num[4] = (uint)(data42 * 65536 + data43 * 256 + data44);       // 06-04. bytes
+        num[5] = (uint)(data45 * 65536 + data46 * 256 + data47);       // 03-01. bytes
 
         var buf = new StringBuilder();
 
@@ -97,11 +102,10 @@ public static class GlobalId
     //
     private static string cv_to_64(uint number, int nDigits)
     {
-        uint act;
         int iDigit;
         var result = new char[nDigits];
 
-        act = number;
+        var act = number;
 
         for (iDigit = 0; iDigit < nDigits; iDigit++)
         {
@@ -183,8 +187,8 @@ public static class GlobalId
     
     public static Guid HashGuid(string uniqueString)
     {
-        System.Security.Cryptography.MD5 md5 = System.Security.Cryptography.MD5.Create();
-        byte[] hash = md5.ComputeHash(Encoding.Default.GetBytes(uniqueString));
+        var md5 = System.Security.Cryptography.MD5.Create();
+        var hash = md5.ComputeHash(Encoding.Default.GetBytes(uniqueString));
         return new Guid(hash);
     }
 }

@@ -1,21 +1,14 @@
-﻿using System;
-//
-using System.Data.SqlClient;
-using Microsoft.SqlServer.Server;
+﻿using System.Data.SqlClient;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
-//
-//using IFCSQL;
 
 namespace UnitTestProject1
 {
-    [TestClass]
-    public class UnitTest1
+    [TestClass] public class UnitTest1
     {
-        [TestMethod]
-        public void TestGetValueType()
+        [TestMethod] public void TestGetValueType()
         {
-            string tstr = "123";
-            IfcValueType res = IfcValue.GetType(tstr);
+            var tstr = "123";
+            var res = IfcValue.GetType(tstr);
             Assert.IsTrue(res == IfcValueType.INTEGER, "bad_int1");
             tstr = "-123";
             res = IfcValue.GetType(tstr);
@@ -62,28 +55,27 @@ namespace UnitTestProject1
             Assert.IsTrue(res == IfcValueType.OBJ, "bad_obj1");
         }
 
-        [TestMethod]
-        public void TestSQLReader1()
+        [TestMethod] public void TestSQLReader1()
         {
-            using (SqlConnection connection = new SqlConnection(@"Server=DESKTOP-BICNNEF\SQLEXPRESS;Database=test2;Trusted_Connection=True;"))
+            using (var connection = new SqlConnection(@"Server=DESKTOP-BICNNEF\SQLEXPRESS;Database=test2;Trusted_Connection=True;"))
             {
                 connection.Open();
-                SqlCommand command1 = new SqlCommand("select IfcObj::Parse('IFCDIRECTION((0.,1.));');");
-                command1.Connection = connection;
+                var command1 = new SqlCommand("select IfcObj::Parse('IFCDIRECTION((0.,1.));');")
+                {
+                    Connection = connection
+                };
                 var res = command1.ExecuteScalar();
             }
         }
 
-        [TestMethod]
-        public void TestSQLReader2()
+        [TestMethod] public void TestSQLReader2()
         {
-            using (SqlConnection connection = new SqlConnection(@"Server=DESKTOP-BICNNEF\SQLEXPRESS;Database=test2;Trusted_Connection=True;"))
+            using (var connection = new SqlConnection(@"Server=DESKTOP-BICNNEF\SQLEXPRESS;Database=test2;Trusted_Connection=True;"))
             {
                 connection.Open();
-                SqlCommand command1 = new SqlCommand("SELECT [item] FROM [test2].[dbo].[Data1]");
-                command1.Connection = connection;
+                var command1 = new SqlCommand("SELECT [item] FROM [test2].[dbo].[Data1]") {Connection = connection};
 
-                SqlDataReader reader = command1.ExecuteReader();
+                var reader = command1.ExecuteReader();
                 IfcObj var;
 
                 if (reader.HasRows)
@@ -96,6 +88,12 @@ namespace UnitTestProject1
 
                 reader.Close();
             }
+        }
+
+        [TestMethod] public void Test1()
+        {
+            var file = IfcFile.Empty();
+
         }
     }
 }
