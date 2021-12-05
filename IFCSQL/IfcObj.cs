@@ -5,6 +5,8 @@ using System.Collections.Generic;
 using System.Data.SqlTypes;
 using System.IO;
 using System.Text.RegularExpressions;
+// ReSharper disable CheckNamespace
+// ReSharper disable StringLiteralTypo
 
 [Serializable, SqlUserDefinedType(Format.UserDefined, MaxByteSize = -1)]
 public struct IfcObj : IBinarySerialize, INullable
@@ -24,20 +26,20 @@ public struct IfcObj : IBinarySerialize, INullable
     }
 
     [SqlMethod(OnNullCall = false)]
-    public static IfcObj Create1(SqlInt32 nid, SqlString nname, IfcValue nlist)
+    public static IfcObj Create1(SqlInt32 nid, SqlString nName, IfcValue nList)
     {
-        var res = new IfcObj {Id = nid.Value, Name = nname.Value};
-        if (nlist.Type == IfcValueType.LIST) res.Attributes = (List<IfcValue>)nlist.Value;
+        var res = new IfcObj {Id = nid.Value, Name = nName.Value};
+        if (nList.Type == IfcValueType.LIST) res.Attributes = (List<IfcValue>)nList.Value;
         return res;
     }
 
-    public static IfcObj _parse(string pstr)
+    public static IfcObj _parse(string pStr)
     {
         var pattern1 = @"#(?<id>\d+)\s?=\s?(?<ifcobj>\w+)\((?<attr>,?.+)\);?";
         var reg = new Regex(pattern1);
-        if (reg.IsMatch(pstr))
+        if (reg.IsMatch(pStr))
         {
-            var m = reg.Match(pstr);
+            var m = reg.Match(pStr);
             var res = new IfcObj
             {
                 Id = int.Parse(m.Groups["id"].Value),
@@ -49,9 +51,9 @@ public struct IfcObj : IBinarySerialize, INullable
 
         var pattern2 = @"(?<ifcobj>\w+)\((?<attr>,?.+)\);?";
         var reg2 = new Regex(pattern2);
-        if (!reg2.IsMatch(pstr)) return Null;
+        if (!reg2.IsMatch(pStr)) return Null;
         {
-            var m = reg2.Match(pstr);
+            var m = reg2.Match(pStr);
             var res = new IfcObj
             {
                 Name = m.Groups["ifcobj"].Value, Attributes = IfcValue.ParseAttributeList(m.Groups["attr"].Value)
@@ -61,7 +63,7 @@ public struct IfcObj : IBinarySerialize, INullable
     }
 
     [SqlMethod(OnNullCall = false)]
-    public int GetID()
+    public int GetId()
     {
         return Id;
     }
@@ -80,9 +82,9 @@ public struct IfcObj : IBinarySerialize, INullable
     }
 
     [SqlMethod(OnNullCall = false)]
-    public IfcObj SetAttribute(int index, IfcValue nval)
+    public IfcObj SetAttribute(int index, IfcValue nVal)
     {
-        if ((index >= 0) & (index < Attributes.Count)) Attributes[index] = nval;
+        if ((index >= 0) & (index < Attributes.Count)) Attributes[index] = nVal;
         return this;
     }
     
@@ -112,14 +114,13 @@ public struct IfcObj : IBinarySerialize, INullable
         Id = r.ReadInt32();
         Name = r.ReadString();
         Attributes = new List<IfcValue>();
-        var acount = (int)r.ReadUInt32();
-        IfcValue nval;
+        var aCount = (int)r.ReadUInt32();
         //
-        for (var i = 0; i < acount; i++)
+        for (var i = 0; i < aCount; i++)
         {
-            nval = new IfcValue();
-            nval.Read(r);
-            Attributes.Add(nval);
+            var nVal = new IfcValue();
+            nVal.Read(r);
+            Attributes.Add(nVal);
         }
     }
 

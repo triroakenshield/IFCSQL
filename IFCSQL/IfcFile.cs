@@ -6,6 +6,7 @@ using System.Data.SqlTypes;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+// ReSharper disable CheckNamespace
 
 [Serializable, SqlUserDefinedType(Format.UserDefined, MaxByteSize = -1)]
 public struct IfcFile : IBinarySerialize, INullable

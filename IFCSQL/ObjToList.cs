@@ -2,33 +2,34 @@
 using System.IO;
 using System.Collections.Generic;
 using Microsoft.SqlServer.Server;
+// ReSharper disable CheckNamespace
 
 [Serializable, SqlUserDefinedAggregate(Format.UserDefined, MaxByteSize = -1)]
 public class ObjToList : IBinarySerialize
 {
-    List<IfcObj> Values;
+    List<IfcObj> _values;
 
     public void Init()
     {
-        if (Values == null) Values = new List<IfcObj>();
+        if (_values == null) _values = new List<IfcObj>();
     }
 
     public void Accumulate(IfcObj value)
     {
-        Values.Add(value);
+        _values.Add(value);
     }
 
     public void Merge(ObjToList other)
     {
-        Values.AddRange(other.Values);
+        _values.AddRange(other._values);
     }
 
     public IfcValue Terminate()
     {
         var nList = new List<IfcValue>();
-        if (Values != null)
+        if (_values != null)
         {
-            foreach (var o in Values)
+            foreach (var o in _values)
             {
                 nList.Add(new IfcValue(IfcValueType.OBJ, o));
             }
@@ -41,19 +42,20 @@ public class ObjToList : IBinarySerialize
         var rVal = new IfcValue(IfcValueType.NULL, null);
         rVal.Read(r);
         var nList = rVal.Value as List<IfcValue>;
-        if (Values == null) Values = new List<IfcObj>();
+        if (_values == null) _values = new List<IfcObj>();
+        if (nList == null) return;
         foreach (var v in nList)
         {
-            Values.Add((IfcObj)v.Value);
+            _values.Add((IfcObj) v.Value);
         }
     }
 
     public void Write(BinaryWriter w)
     {
         var nList = new List<IfcValue>();
-        if (Values != null)
+        if (_values != null)
         {
-            foreach (var o in Values)
+            foreach (var o in _values)
             {
                 nList.Add(new IfcValue(IfcValueType.OBJ, o));
             }

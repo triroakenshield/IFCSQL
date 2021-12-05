@@ -8,6 +8,8 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+// ReSharper disable CheckNamespace
+// ReSharper disable InconsistentNaming
 
 public enum IfcValueType
 {
@@ -35,7 +37,7 @@ public struct IfcValue : IBinarySerialize, INullable
 
     public static IfcValue Null => new IfcValue(IfcValueType.NULL, null);
 
-    public static IfcValueType GetType(string tstr)
+    public static IfcValueType GetType(string tStr)
     {
         string[] patterns = {
                 @"(?<null>^\$$)",
@@ -50,13 +52,13 @@ public struct IfcValue : IBinarySerialize, INullable
             };
         var pattern = string.Join("|", patterns);
         var reg = new Regex(pattern);
-        string[] gnames = { "null", "der", "int", "real", "str", "ent", "enum", "list", "obj" };
-        var m = reg.Match(tstr);
-        foreach (string gname in gnames)
+        string[] gNames = { "null", "der", "int", "real", "str", "ent", "enum", "list", "obj" };
+        var m = reg.Match(tStr);
+        foreach (string gName in gNames)
         {
-            if (m.Groups[gname].Success)
+            if (m.Groups[gName].Success)
             {
-                switch (gname)
+                switch (gName)
                 {
                     case "null": return IfcValueType.NULL;
                     case "der": return IfcValueType.DERIVE;
@@ -73,80 +75,80 @@ public struct IfcValue : IBinarySerialize, INullable
         return IfcValueType.STRING;
     }
 
-    public IfcValue(IfcValueType ntype, object nvalue)
+    public IfcValue(IfcValueType nType, object nValue)
     {
-        Type = ntype;
-        Value = nvalue;
+        Type = nType;
+        Value = nValue;
     }
 
-    public static List<IfcValue> ParseAttributeList(string pstr)
+    public static List<IfcValue> ParseAttributeList(string pStr)
     {
         var rList = new List<IfcValue>();
-        if (pstr.Length == 0) return rList;
-        var ntoken = string.Empty;
+        if (pStr.Length == 0) return rList;
+        var nToken = string.Empty;
         int level1 = 0, level2 = 0;
-        bool slist = false, sobj = false;
-        for (var i = 0; i < pstr.Length; i++)
+        bool sList = false, sObj = false;
+        for (var i = 0; i < pStr.Length; i++)
         {
-            var ch = pstr[i];
-            if (level1 == 0 & level2 == 0 & (ch == '#' | char.IsLetter(ch))) sobj = true;
+            var ch = pStr[i];
+            if (level1 == 0 & level2 == 0 & (ch == '#' | char.IsLetter(ch))) sObj = true;
             switch (ch) //obj!!!
             {
                 case '(':
                     level1++;
-                    slist = true;
-                    if (sobj) ntoken += ch;
+                    sList = true;
+                    if (sObj) nToken += ch;
                     break;
                 case ')':
                     level1--;
-                    if (sobj) ntoken += ch;
+                    if (sObj) nToken += ch;
                     break;
                 case '\'':
                     if (level2 == 0) level2++;
                     else level2--;
-                    if (sobj) ntoken += ch;
+                    if (sObj) nToken += ch;
                     break;
                 case ',':
                     if (level1 == 0 & level2 == 0)
                     {
-                        if (sobj)
+                        if (sObj)
                         {
-                            rList.Add(new IfcValue(ntoken));
-                            sobj = false;
-                            slist = false;
+                            rList.Add(new IfcValue(nToken));
+                            sObj = false;
+                            sList = false;
                         }
-                        else if (slist)
+                        else if (sList)
                         {
-                            rList.Add(new IfcValue(IfcValueType.LIST, ParseAttributeList(ntoken)));
-                            slist = false;
+                            rList.Add(new IfcValue(IfcValueType.LIST, ParseAttributeList(nToken)));
+                            sList = false;
                         }
-                        else rList.Add(new IfcValue(ntoken));
-                        ntoken = string.Empty;
+                        else rList.Add(new IfcValue(nToken));
+                        nToken = string.Empty;
                     }
-                    else ntoken += ch;
+                    else nToken += ch;
                     break;
                 default:
-                    ntoken += ch;
+                    nToken += ch;
                     break;
             }
         }
-        if (sobj)
+        if (sObj)
         {
-            rList.Add(new IfcValue(ntoken));
-            slist = false;
+            rList.Add(new IfcValue(nToken));
+            sList = false;
         }
         else
         {
-            rList.Add(slist ? new IfcValue(IfcValueType.LIST, ParseAttributeList(ntoken)) : new IfcValue(ntoken));
+            rList.Add(sList ? new IfcValue(IfcValueType.LIST, ParseAttributeList(nToken)) : new IfcValue(nToken));
         }
 
         return rList;
     }
 
-    public IfcValue(string nvalue)
+    public IfcValue(string nValue)
     {
-        nvalue = nvalue.Trim();
-        Type = GetType(nvalue);
+        nValue = nValue.Trim();
+        Type = GetType(nValue);
         Value = null;
         switch (Type)
         {
@@ -157,25 +159,25 @@ public struct IfcValue : IBinarySerialize, INullable
                 //this.value = null;
                 break;
             case IfcValueType.STRING:
-                Value = nvalue;
+                Value = nValue;
                 break;
             case IfcValueType.REAL:
-                Value = double.Parse(nvalue, CultureInfo.InvariantCulture);
+                Value = double.Parse(nValue, CultureInfo.InvariantCulture);
                 break;
             case IfcValueType.INTEGER:
-                Value = int.Parse(nvalue);
+                Value = int.Parse(nValue);
                 break;
             case IfcValueType.ENTITY_INSTANCE_NAME: //!!!
-                Value = int.Parse(nvalue.Substring(1));
+                Value = int.Parse(nValue.Substring(1));
                 break;
             case IfcValueType.ENUMERATION: //!!!
-                Value = nvalue.Substring(1, nvalue.Length - 2);
+                Value = nValue.Substring(1, nValue.Length - 2);
                 break;
             case IfcValueType.LIST:
-                Value = ParseAttributeList(nvalue.Substring(1, nvalue.Length - 2));
+                Value = ParseAttributeList(nValue.Substring(1, nValue.Length - 2));
                 break;
             case IfcValueType.OBJ:
-                Value = IfcObj.Parse(nvalue);
+                Value = IfcObj.Parse(nValue);
                 break;
         }
     }
@@ -186,12 +188,12 @@ public struct IfcValue : IBinarySerialize, INullable
         return s.IsNull ? new IfcValue() : new IfcValue(s.Value);
     }
 
-    public static string HexToStr(string tstr)
+    public static string HexToStr(string tStr)
     {
-        var rstr = "";
-        for (var i = 0; i < tstr.Length; i += 4)
-            rstr += (char)short.Parse(tstr.Substring(i, 4), NumberStyles.AllowHexSpecifier);
-        return rstr;
+        var rStr = "";
+        for (var i = 0; i < tStr.Length; i += 4)
+            rStr += (char)short.Parse(tStr.Substring(i, 4), NumberStyles.AllowHexSpecifier);
+        return rStr;
     }
 
     public static string toUTF(string instr)
@@ -206,7 +208,7 @@ public struct IfcValue : IBinarySerialize, INullable
     }
 
     [SqlMethod(OnNullCall = false)]
-    public IfcValue AddItem(IfcValue nval)
+    public IfcValue AddItem(IfcValue nVal)
     {
         List<IfcValue> wList;
         if (Type != IfcValueType.LIST)
@@ -216,9 +218,9 @@ public struct IfcValue : IBinarySerialize, INullable
             wList = new List<IfcValue>();
             Value = wList;
             wList.Add(oval);
-            wList.Add(nval);
+            wList.Add(nVal);
         }
-        else ((List<IfcValue>)Value).Add(nval);
+        else ((List<IfcValue>)Value).Add(nVal);
         return this;
     }
 
@@ -261,7 +263,7 @@ public struct IfcValue : IBinarySerialize, INullable
     {
         var vList = new List<IfcValue>();
 
-        foreach (IfcObj o in wList)
+        foreach (var o in wList)
         {
             vList.Add(new IfcValue(IfcValueType.OBJ, o));
         }
@@ -279,7 +281,7 @@ public struct IfcValue : IBinarySerialize, INullable
                 break;
             case IfcValueType.LIST:
                 var wList = val.Value as List<IfcValue>;
-                foreach (IfcValue sval in wList)
+                foreach (var sval in wList)
                 {
                     rList.AddRange(GetRefs(sval));
                 }
@@ -304,7 +306,7 @@ public struct IfcValue : IBinarySerialize, INullable
             int tid;
 
             var DictID = new Dictionary<int, int>();
-            for (int i = 0; i < oList.Count; i++)
+            for (var i = 0; i < oList.Count; i++)
             {
                 nextoidv = oList[i];
                 nextnidv = nList[i];
@@ -316,13 +318,12 @@ public struct IfcValue : IBinarySerialize, INullable
             }
 
             var wList = Value as List<IfcValue>;
-            for (int i = 0; i < wList.Count; i++)
+            for (var i = 0; i < wList?.Count; i++)
             {
-                //
                 ov = wList[i];
                 if (ov.Type == IfcValueType.OBJ)
                 {
-                    IfcObj obj = (IfcObj)ov.Value;
+                    var obj = (IfcObj)ov.Value;
                     if (DictID.ContainsKey(obj.Id))
                     {
                         obj.Id = DictID[obj.Id];
