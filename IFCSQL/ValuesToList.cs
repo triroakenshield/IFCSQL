@@ -3,42 +3,41 @@ using System.IO;
 using System.Collections.Generic;
 using Microsoft.SqlServer.Server;
 
-[Serializable]
-[SqlUserDefinedAggregate(Format.UserDefined, MaxByteSize = -1)]
+[Serializable, SqlUserDefinedAggregate(Format.UserDefined, MaxByteSize = -1)]
 public class ValuesToList : IBinarySerialize
 {
     List<IfcValue> Values;
 
     public void Init()
     {
-        if (this.Values == null) this.Values = new List<IfcValue>();
+        if (Values == null) Values = new List<IfcValue>();
     }
 
     public void Accumulate(IfcValue value)
     {
-        this.Values.Add(value);
+        Values.Add(value);
     }
 
     public void Merge(ValuesToList other)
     {
-        this.Values.AddRange(other.Values);
+        Values.AddRange(other.Values);
     }
 
     public IfcValue Terminate()
     {
-        return new IfcValue(IfcValueType.LIST, this.Values);
+        return new IfcValue(IfcValueType.LIST, Values);
     }
 
     public void Read(BinaryReader r)
     {
-        IfcValue rVal = new IfcValue(IfcValueType.NULL, null);
+        var rVal = new IfcValue(IfcValueType.NULL, null);
         rVal.Read(r);
-        this.Values = rVal.value as List<IfcValue>;
+        Values = rVal.Value as List<IfcValue>;
     }
 
     public void Write(BinaryWriter w)
     {
-        IfcValue rVal = new IfcValue(IfcValueType.LIST, this.Values);
+        var rVal = new IfcValue(IfcValueType.LIST, Values);
         rVal.Write(w);
     }
 }

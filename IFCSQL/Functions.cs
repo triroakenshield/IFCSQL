@@ -1,17 +1,12 @@
-﻿using System;
+﻿using Microsoft.SqlServer.Server;
+
+using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-//
-using System.Data.SqlTypes;
 using System.Data.SqlClient;
-using Microsoft.SqlServer.Server;
 
 public class Functions
 {
-
     private static void FillValues(object obj, out IfcObj TheValue)
     {
         TheValue = (IfcObj)obj;
@@ -20,7 +15,7 @@ public class Functions
     private static void FillValues2(object obj, out IfcObj TheValue)
     {
         IfcValue val = (IfcValue)obj;
-        if (val.type == IfcValueType.OBJ) TheValue = (IfcObj)val.value;
+        if (val.Type == IfcValueType.OBJ) TheValue = (IfcObj)val.Value;
         else TheValue = IfcObj.Null;
     }
 
@@ -44,7 +39,7 @@ public class Functions
     [SqlFunction(FillRowMethodName = "FillValues3", TableDefinition = "obj IfcValue")]
     public static IEnumerable ValuesListToTable(IfcValue wlist)
     {
-        if (wlist.type == IfcValueType.LIST) return (List<IfcValue>)wlist.value;
+        if (wlist.Type == IfcValueType.LIST) return (List<IfcValue>)wlist.Value;
         else {
             List<IfcValue> rList = new List<IfcValue>();
             rList.Add(wlist);
@@ -55,17 +50,17 @@ public class Functions
     [SqlFunction(FillRowMethodName = "FillValues2", TableDefinition = "obj IfcObj")]
     public static IEnumerable ObjListToTable(IfcValue wlist)
     {
-        if (wlist.type == IfcValueType.LIST) return (List<IfcValue>)wlist.value;
+        if (wlist.Type == IfcValueType.LIST) return (List<IfcValue>)wlist.Value;
         else
         {
-            List<IfcValue> rList = new List<IfcValue>();
+            var rList = new List<IfcValue>();
             rList.Add(wlist);
             return rList;
         }
     }
 
     [SqlFunction()]
-    public static String NewGlobalId()
+    public static string NewGlobalId()
     {
         return GlobalId.Format(Guid.NewGuid());
     }
@@ -75,9 +70,9 @@ public class Functions
         int ref_val;
         foreach (IfcValue r in refs)
         {
-            if (r.type == IfcValueType.ENTITY_INSTANCE_NAME)
+            if (r.Type == IfcValueType.ENTITY_INSTANCE_NAME)
             {
-                ref_val = (int)r.value;
+                ref_val = (int)r.Value;
                 if (!wDict.ContainsKey(ref_val)) wDict.Add(ref_val, new List<int>());
                 wDict[ref_val].Add(wobj_id);
             }
@@ -87,17 +82,16 @@ public class Functions
     private static void FillRefsValues1(object obj, out int oid, out IfcValue refsval)
     {
         //TheValue = (IfcValue)obj;
-        KeyValuePair<int, List<int>> var = (KeyValuePair<int, List<int>>)obj;
-        List<IfcValue> refs = new List<IfcValue>();
+        var var = (KeyValuePair<int, List<int>>)obj;
+        var refs = new List<IfcValue>();
 
-        foreach (int rid in var.Value)
+        foreach (var rid in var.Value)
         {
             refs.Add(new IfcValue(IfcValueType.ENTITY_INSTANCE_NAME, rid));
         }
 
         oid = var.Key;
         refsval = new IfcValue(IfcValueType.LIST, refs);
-
     }
 
     [SqlFunction(DataAccess = DataAccessKind.Read, FillRowMethodName = "FillRefsValues1", TableDefinition = "oid int; refs IfcValue")]
@@ -105,16 +99,15 @@ public class Functions
     {
         using (SqlConnection connection = new SqlConnection("context connection=true"))
         {
-            string QueryStr = $"select {fieldname} from {tablename}";
+            var QueryStr = $"select {fieldname} from {tablename}";
             IfcObj var;
-            List<IfcObj> wList = new List<IfcObj>();
-            Dictionary<int, List<int>> wDict = new Dictionary<int, List<int>>();
+            var wList = new List<IfcObj>();
+            var wDict = new Dictionary<int, List<int>>();
 
             connection.Open();
 
-            SqlCommand command1 = new SqlCommand(QueryStr);
-            command1.Connection = connection;
-            SqlDataReader reader = command1.ExecuteReader();
+            var command1 = new SqlCommand(QueryStr) {Connection = connection};
+            var reader = command1.ExecuteReader();
 
             if (reader.HasRows)
             {
@@ -122,8 +115,8 @@ public class Functions
                 {
                     var = reader.GetFieldValue<IfcObj>(0);
                     wList.Add(var);
-                    if (!wDict.ContainsKey(var.id)) wDict.Add(var.id, new List<int>());
-                    _calcRefs(wDict, var.id, var._getRefs());
+                    if (!wDict.ContainsKey(var.Id)) wDict.Add(var.Id, new List<int>());
+                    _calcRefs(wDict, var.Id, var._getRefs());
                 }
             }
 
@@ -139,6 +132,4 @@ public class Functions
             return wDict;
         }
     }
-
 }
-

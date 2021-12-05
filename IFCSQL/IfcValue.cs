@@ -1,14 +1,13 @@
-﻿using System;
-using System.IO;
-using System.Globalization;
+﻿using Microsoft.SqlServer.Server;
+
+using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-//
+
 using System.Data.SqlTypes;
-using Microsoft.SqlServer.Server;
+using System.Globalization;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
 
 public enum IfcValueType
 {
@@ -26,29 +25,15 @@ public enum IfcValueType
     //LOGICAL = 12
 }
 
-[Serializable]
-[SqlUserDefinedType(Format.UserDefined, MaxByteSize = -1)]
+[Serializable, SqlUserDefinedType(Format.UserDefined, MaxByteSize = -1)]
 public struct IfcValue : IBinarySerialize, INullable
 {
+    public IfcValueType Type;
+    public object Value;
 
-    public IfcValueType type;
-    public object value;
+    public bool IsNull => false; //type == IfcValueType.NULL;
 
-    public bool IsNull
-    {
-        get
-        {
-            return false; //type == IfcValueType.NULL;
-        }
-    }
-
-    public static IfcValue Null
-    {
-        get
-        {
-            return new IfcValue(IfcValueType.NULL, null);
-        }
-    }
+    public static IfcValue Null => new IfcValue(IfcValueType.NULL, null);
 
     public static IfcValueType GetType(string tstr)
     {
@@ -63,10 +48,10 @@ public struct IfcValue : IBinarySerialize, INullable
                 @"(?<list>^\((.+,)*.*\)$)",
                 @"(?<obj>^(#\d+\s?=\s?)?\w+\(.+\);?$)"
             };
-        string pattern = String.Join("|", patterns);
-        Regex reg = new Regex(pattern);
+        var pattern = string.Join("|", patterns);
+        var reg = new Regex(pattern);
         string[] gnames = { "null", "der", "int", "real", "str", "ent", "enum", "list", "obj" };
-        Match m = reg.Match(tstr);
+        var m = reg.Match(tstr);
         foreach (string gname in gnames)
         {
             if (m.Groups[gname].Success)
@@ -88,29 +73,22 @@ public struct IfcValue : IBinarySerialize, INullable
         return IfcValueType.STRING;
     }
 
-
-    //public IfcValue()
-    //{
-    //    this.type = IfcValueType.NULL;
-    //    this.value = null;
-    //}
-
     public IfcValue(IfcValueType ntype, object nvalue)
     {
-        this.type = ntype;
-        this.value = nvalue;
+        Type = ntype;
+        Value = nvalue;
     }
 
     public static List<IfcValue> ParseAttributeList(string pstr)
     {
-        List<IfcValue> rList = new List<IfcValue>();
+        var rList = new List<IfcValue>();
         if (pstr.Length == 0) return rList;
-        string ntoken = string.Empty;
+        var ntoken = string.Empty;
         int level1 = 0, level2 = 0;
         bool slist = false, sobj = false;
-        for (int i = 0; i < pstr.Length; i++)
+        for (var i = 0; i < pstr.Length; i++)
         {
-            char ch = pstr[i];
+            var ch = pstr[i];
             if (level1 == 0 & level2 == 0 & (ch == '#' | char.IsLetter(ch))) sobj = true;
             switch (ch) //obj!!!
             {
@@ -139,7 +117,7 @@ public struct IfcValue : IBinarySerialize, INullable
                         }
                         else if (slist)
                         {
-                            rList.Add(new IfcValue(IfcValueType.LIST, IfcValue.ParseAttributeList(ntoken)));
+                            rList.Add(new IfcValue(IfcValueType.LIST, ParseAttributeList(ntoken)));
                             slist = false;
                         }
                         else rList.Add(new IfcValue(ntoken));
@@ -159,8 +137,7 @@ public struct IfcValue : IBinarySerialize, INullable
         }
         else
         {
-            if (slist) rList.Add(new IfcValue(IfcValueType.LIST, IfcValue.ParseAttributeList(ntoken)));
-            else rList.Add(new IfcValue(ntoken));
+            rList.Add(slist ? new IfcValue(IfcValueType.LIST, ParseAttributeList(ntoken)) : new IfcValue(ntoken));
         }
 
         return rList;
@@ -169,9 +146,9 @@ public struct IfcValue : IBinarySerialize, INullable
     public IfcValue(string nvalue)
     {
         nvalue = nvalue.Trim();
-        this.type = IfcValue.GetType(nvalue);
-        this.value = null;
-        switch (this.type)
+        Type = GetType(nvalue);
+        Value = null;
+        switch (Type)
         {
             case IfcValueType.NULL:
                 //this.value = null;
@@ -180,25 +157,25 @@ public struct IfcValue : IBinarySerialize, INullable
                 //this.value = null;
                 break;
             case IfcValueType.STRING:
-                this.value = nvalue;
+                Value = nvalue;
                 break;
             case IfcValueType.REAL:
-                this.value = double.Parse(nvalue, CultureInfo.InvariantCulture);
+                Value = double.Parse(nvalue, CultureInfo.InvariantCulture);
                 break;
             case IfcValueType.INTEGER:
-                this.value = int.Parse(nvalue);
+                Value = int.Parse(nvalue);
                 break;
             case IfcValueType.ENTITY_INSTANCE_NAME: //!!!
-                this.value = int.Parse(nvalue.Substring(1));
+                Value = int.Parse(nvalue.Substring(1));
                 break;
             case IfcValueType.ENUMERATION: //!!!
-                this.value = nvalue.Substring(1, nvalue.Length - 2);
+                Value = nvalue.Substring(1, nvalue.Length - 2);
                 break;
             case IfcValueType.LIST:
-                this.value = IfcValue.ParseAttributeList(nvalue.Substring(1, nvalue.Length - 2));
+                Value = ParseAttributeList(nvalue.Substring(1, nvalue.Length - 2));
                 break;
             case IfcValueType.OBJ:
-                this.value = IfcObj.Parse(nvalue);
+                Value = IfcObj.Parse(nvalue);
                 break;
         }
     }
@@ -206,21 +183,20 @@ public struct IfcValue : IBinarySerialize, INullable
     [SqlMethod(OnNullCall = false)]
     public static IfcValue Parse(SqlString s)
     {
-        if (s.IsNull) return new IfcValue();
-        else return new IfcValue(s.Value);
+        return s.IsNull ? new IfcValue() : new IfcValue(s.Value);
     }
 
     public static string HexToStr(string tstr)
     {
-        string rstr = "";
-        for (int i = 0; i < tstr.Length; i += 4)
-            rstr += (char)Int16.Parse(tstr.Substring(i, 4), NumberStyles.AllowHexSpecifier);
+        var rstr = "";
+        for (var i = 0; i < tstr.Length; i += 4)
+            rstr += (char)short.Parse(tstr.Substring(i, 4), NumberStyles.AllowHexSpecifier);
         return rstr;
     }
 
     public static string toUTF(string instr)
     {
-        Regex rgx = new Regex(@"\\X2\\(?<val>[0-9a-fA-F]+)\\X0\\");
+        var rgx = new Regex(@"\\X2\\(?<val>[0-9a-fA-F]+)\\X0\\");
         var res = rgx.Matches(instr);
         foreach (Match mt in res)
         {
@@ -233,47 +209,43 @@ public struct IfcValue : IBinarySerialize, INullable
     public IfcValue AddItem(IfcValue nval)
     {
         List<IfcValue> wList;
-        if (this.type != IfcValueType.LIST)
+        if (Type != IfcValueType.LIST)
         {
-            IfcValue oval = new IfcValue(this.type, this.value);
-            this.type = IfcValueType.LIST;
+            var oval = new IfcValue(Type, Value);
+            Type = IfcValueType.LIST;
             wList = new List<IfcValue>();
-            this.value = wList;
+            Value = wList;
             wList.Add(oval);
             wList.Add(nval);
         }
-        else ((List<IfcValue>)this.value).Add(nval);
+        else ((List<IfcValue>)Value).Add(nval);
         return this;
     }
 
     [SqlMethod(OnNullCall = false)]
     public IfcValue DelItem(int index)
     {
-        if (this.type == IfcValueType.LIST)
-        {
-            List<IfcValue> wList = (List<IfcValue>)this.value;
-            if ((index >= 0) & (index < wList.Count)) wList.Remove(wList[index]);
-        }
+        if (Type != IfcValueType.LIST) return this;
+        var wList = (List<IfcValue>)Value;
+        if ((index >= 0) & (index < wList.Count)) wList.Remove(wList[index]);
         return this;
     }
 
     [SqlMethod(OnNullCall = false)]
     public IfcValue GetItem(int index)
     {
-        if (this.type == IfcValueType.LIST)
-        {
-            List<IfcValue> wList = (List<IfcValue>)this.value;
-            if ((index >= 0) & (index < wList.Count)) return wList[index];
-        }
+        if (Type != IfcValueType.LIST) return new IfcValue();
+        var wList = (List<IfcValue>)Value;
+        if ((index >= 0) & (index < wList.Count)) return wList[index];
         return new IfcValue();
     }
 
     [SqlMethod(OnNullCall = false)]
     public IfcValue SetItem(int index, IfcValue nval)
     {
-        if (this.type == IfcValueType.LIST)
+        if (Type == IfcValueType.LIST)
         {
-            List<IfcValue> wList = (List<IfcValue>)this.value;
+            var wList = (List<IfcValue>)Value;
             if ((index >= 0) & (index < wList.Count)) wList[index] = nval;
         }
         return this;
@@ -282,12 +254,12 @@ public struct IfcValue : IBinarySerialize, INullable
     [SqlMethod(IsDeterministic = true, IsPrecise = true)]
     public string GetValueType()
     {
-        return this.type.ToString();
+        return Type.ToString();
     }
 
     public static IfcValue GetList(List<IfcObj> wList)
     {
-        List<IfcValue> vList = new List<IfcValue>();
+        var vList = new List<IfcValue>();
 
         foreach (IfcObj o in wList)
         {
@@ -299,23 +271,21 @@ public struct IfcValue : IBinarySerialize, INullable
 
     public static List<IfcValue> GetRefs(IfcValue val)
     {
-        List<IfcValue> rList = new List<IfcValue>();
-        switch (val.type)
+        var rList = new List<IfcValue>();
+        switch (val.Type)
         {
             case IfcValueType.ENTITY_INSTANCE_NAME: //!!!
                 rList.Add(val);
                 break;
             case IfcValueType.LIST:
-                List<IfcValue> wList = val.value as List<IfcValue>;
+                var wList = val.Value as List<IfcValue>;
                 foreach (IfcValue sval in wList)
                 {
-                    rList.AddRange(IfcValue.GetRefs(sval));
+                    rList.AddRange(GetRefs(sval));
                 }
                 break;
             case IfcValueType.OBJ:
-                rList.AddRange(((IfcObj)val.value)._getRefs());
-                break;
-            default:
+                rList.AddRange(((IfcObj)val.Value)._getRefs());
                 break;
         }
         return rList;
@@ -324,50 +294,50 @@ public struct IfcValue : IBinarySerialize, INullable
     [SqlMethod(OnNullCall = false)]
     public IfcValue ReplaceID(IfcValue oid, IfcValue nid)
     {
-        if ((this.type == IfcValueType.LIST) &
-             (oid.type == IfcValueType.LIST) &
-             (nid.type == IfcValueType.LIST))
+        if ((Type == IfcValueType.LIST) &
+             (oid.Type == IfcValueType.LIST) &
+             (nid.Type == IfcValueType.LIST))
         {
-            List<IfcValue> oList = (List<IfcValue>)oid.value;
-            List<IfcValue> nList = (List<IfcValue>)nid.value;
+            var oList = (List<IfcValue>)oid.Value;
+            var nList = (List<IfcValue>)nid.Value;
             IfcValue nextoidv, nextnidv, tattr, ov;
             int tid;
 
-            Dictionary<int, int> DictID = new Dictionary<int, int>();
+            var DictID = new Dictionary<int, int>();
             for (int i = 0; i < oList.Count; i++)
             {
                 nextoidv = oList[i];
                 nextnidv = nList[i];
-                if ((nextnidv.type == IfcValueType.ENTITY_INSTANCE_NAME) &
-                    (nextoidv.type == IfcValueType.ENTITY_INSTANCE_NAME))
+                if ((nextnidv.Type == IfcValueType.ENTITY_INSTANCE_NAME) &
+                    (nextoidv.Type == IfcValueType.ENTITY_INSTANCE_NAME))
                 {
-                    DictID.Add((int)nextoidv.value, (int)nextnidv.value);
+                    DictID.Add((int)nextoidv.Value, (int)nextnidv.Value);
                 }
             }
 
-            List<IfcValue> wList = this.value as List<IfcValue>;
+            var wList = Value as List<IfcValue>;
             for (int i = 0; i < wList.Count; i++)
             {
                 //
                 ov = wList[i];
-                if (ov.type == IfcValueType.OBJ)
+                if (ov.Type == IfcValueType.OBJ)
                 {
-                    IfcObj obj = (IfcObj)ov.value;
-                    if (DictID.ContainsKey(obj.id))
+                    IfcObj obj = (IfcObj)ov.Value;
+                    if (DictID.ContainsKey(obj.Id))
                     {
-                        obj.id = DictID[obj.id];
-                        ov.value = obj;
+                        obj.Id = DictID[obj.Id];
+                        ov.Value = obj;
                         wList[i] = ov;
                     }
 
-                    for (int j = 0; j < obj.attributes.Count; j++)
+                    for (int j = 0; j < obj.Attributes.Count; j++)
                     {
-                        tattr = obj.attributes[j];
+                        tattr = obj.Attributes[j];
 
-                        if (tattr.type == IfcValueType.ENTITY_INSTANCE_NAME)
+                        if (tattr.Type == IfcValueType.ENTITY_INSTANCE_NAME)
                         {
-                            tid = (int)tattr.value;
-                            if (DictID.ContainsKey(tid)) tattr.value = DictID[tid];
+                            tid = (int)tattr.Value;
+                            if (DictID.ContainsKey(tid)) tattr.Value = DictID[tid];
                         }
                     }
                 }
@@ -378,80 +348,80 @@ public struct IfcValue : IBinarySerialize, INullable
 
     public override string ToString()
     {
-        switch (this.type)
+        switch (Type)
         {
             case IfcValueType.NULL:
                 return "$";
             case IfcValueType.DERIVE:
                 return "*";
             case IfcValueType.STRING:
-                return $"'{IfcValue.toUTF((string)this.value)}'";
+                return $"'{toUTF((string)Value)}'";
             case IfcValueType.REAL:
-                return $"{((double)value).ToString("#.0###")}";
+                return $"{(double)Value:#.0###}";
             case IfcValueType.INTEGER:
-                return $"{((int)value).ToString()}";
+                return $"{(int)Value}";
             case IfcValueType.ENTITY_INSTANCE_NAME: //!!!
-                return $"#{((int)value).ToString()}";
+                return $"#{(int)Value}";
             case IfcValueType.ENUMERATION: //!!!
-                return $".{((string)value).ToUpper()}.";
+                return $".{((string)Value).ToUpper()}.";
             case IfcValueType.LIST:
-                return $"({string.Join(",", ((List<IfcValue>)value).ConvertAll(x => x.ToString()))})";
+                return $"({string.Join(",", ((List<IfcValue>)Value).ConvertAll(x => x.ToString()))})";
             case IfcValueType.OBJ:
-                return ((IfcObj)value).ToString();
-            default: return (string)value;
+                return ((IfcObj)Value).ToString();
+            default: return (string)Value;
         }
     }
 
     public void Read(BinaryReader r)
     {
         //throw new NotImplementedException();
-        byte bt = r.ReadByte();
-        this.type = (IfcValueType)bt;
+        var bt = r.ReadByte();
+        Type = (IfcValueType)bt;
         //
-        switch (this.type)
+        switch (Type)
         {
             case IfcValueType.NULL:
                 break;
             case IfcValueType.DERIVE:
                 break;
             case IfcValueType.STRING:
-                this.value = r.ReadString();
+                Value = r.ReadString();
                 break;
             case IfcValueType.REAL:
-                this.value = r.ReadDouble();
+                Value = r.ReadDouble();
                 break;
             case IfcValueType.INTEGER:
-                this.value = r.ReadInt32();
+                Value = r.ReadInt32();
                 break;
             case IfcValueType.ENTITY_INSTANCE_NAME: //!!!
-                this.value = r.ReadInt32();
+                Value = r.ReadInt32();
                 break;
             case IfcValueType.ENUMERATION: //!!!
-                this.value = r.ReadString();
+                Value = r.ReadString();
                 break;
             case IfcValueType.LIST: //!!!
-                List<IfcValue> wList = new List<IfcValue>();
+                var wList = new List<IfcValue>();
                 IfcValue nval;
-                int lcount = (int)r.ReadUInt32();
+                var lcount = (int)r.ReadUInt32();
                 //
                 if (lcount > 0)
                 {
-                    for (int i = 0; i < lcount; i++)
+                    for (var i = 0; i < lcount; i++)
                     {
                         nval = new IfcValue();
                         nval.Read(r);
                         wList.Add(nval);
                     }
                 }
-                this.value = wList;
+                Value = wList;
                 break;
             case IfcValueType.OBJ:
                 IfcObj obj = new IfcObj();
                 obj.Read(r);
-                this.value = obj;
+                Value = obj;
                 break;
             default:
-                this.value = r.ReadString();
+                Value = r.ReadString();
                 break;
         }
     }
@@ -459,36 +429,35 @@ public struct IfcValue : IBinarySerialize, INullable
     public void Write(BinaryWriter w)
     {
         //throw new NotImplementedException();
-        w.Write((byte)type);
+        w.Write((byte)Type);
         //
-        switch (this.type)
+        switch (Type)
         {
             case IfcValueType.NULL:
                 break;
             case IfcValueType.DERIVE:
                 break;
             case IfcValueType.STRING:
-                w.Write((string)this.value);
+                w.Write((string)Value);
                 break;
             case IfcValueType.REAL:
-                w.Write((double)this.value);
+                w.Write((double)Value);
                 break;
             case IfcValueType.INTEGER:
-                w.Write((int)this.value);
+                w.Write((int)Value);
                 break;
             case IfcValueType.ENTITY_INSTANCE_NAME: //!!!
-                w.Write((int)this.value);
+                w.Write((int)Value);
                 break;
             case IfcValueType.ENUMERATION: //!!!
-                w.Write(((string)value).ToUpper());
+                w.Write(((string)Value).ToUpper());
                 break;
             case IfcValueType.LIST: //!!!
-                List<IfcValue> wList = this.value as List<IfcValue>;
-                if (wList != null)
+                if (Value is List<IfcValue> wList)
                 {
-                    uint ui = (uint)wList.Count();
+                    var ui = (uint)wList.Count();
                     w.Write(ui);
-                    foreach (IfcValue val in wList)
+                    foreach (var val in wList)
                     {
                         val.Write(w);
                     }
@@ -496,14 +465,12 @@ public struct IfcValue : IBinarySerialize, INullable
                 else w.Write(0);
                 break;
             case IfcValueType.OBJ:
-                IfcObj obj = (IfcObj)this.value;
+                IfcObj obj = (IfcObj)Value;
                 obj.Write(w);
                 break;
             default:
-                w.Write((string)this.value);
+                w.Write((string)Value);
                 break;
         }
     }
-
-
 }

@@ -3,33 +3,32 @@ using System.IO;
 using System.Collections.Generic;
 using Microsoft.SqlServer.Server;
 
-[Serializable]
-[SqlUserDefinedAggregate(Format.UserDefined, MaxByteSize = -1)]
+[Serializable, SqlUserDefinedAggregate(Format.UserDefined, MaxByteSize = -1)]
 public class ObjToList : IBinarySerialize
 {
     List<IfcObj> Values;
 
     public void Init()
     {
-        if (this.Values == null) this.Values = new List<IfcObj>();
+        if (Values == null) Values = new List<IfcObj>();
     }
 
     public void Accumulate(IfcObj value)
     {
-        this.Values.Add(value);
+        Values.Add(value);
     }
 
     public void Merge(ObjToList other)
     {
-        this.Values.AddRange(other.Values);
+        Values.AddRange(other.Values);
     }
 
     public IfcValue Terminate()
     {
-        List<IfcValue> nList = new List<IfcValue>();
-        if (this.Values != null)
+        var nList = new List<IfcValue>();
+        if (Values != null)
         {
-            foreach (IfcObj o in Values)
+            foreach (var o in Values)
             {
                 nList.Add(new IfcValue(IfcValueType.OBJ, o));
             }
@@ -39,27 +38,27 @@ public class ObjToList : IBinarySerialize
 
     public void Read(BinaryReader r)
     {
-        IfcValue rVal = new IfcValue(IfcValueType.NULL, null);
+        var rVal = new IfcValue(IfcValueType.NULL, null);
         rVal.Read(r);
-        List<IfcValue> nList = rVal.value as List<IfcValue>;
-        if (this.Values == null) this.Values = new List<IfcObj>();
-        foreach (IfcValue v in nList)
+        var nList = rVal.Value as List<IfcValue>;
+        if (Values == null) Values = new List<IfcObj>();
+        foreach (var v in nList)
         {
-            Values.Add((IfcObj)v.value);
+            Values.Add((IfcObj)v.Value);
         }
     }
 
     public void Write(BinaryWriter w)
     {
-        List<IfcValue> nList = new List<IfcValue>();
-        if (this.Values != null)
+        var nList = new List<IfcValue>();
+        if (Values != null)
         {
-            foreach (IfcObj o in Values)
+            foreach (var o in Values)
             {
                 nList.Add(new IfcValue(IfcValueType.OBJ, o));
             }
         }
-        IfcValue rVal = new IfcValue(IfcValueType.LIST, nList);
+        var rVal = new IfcValue(IfcValueType.LIST, nList);
         rVal.Write(w);
     }
 }
